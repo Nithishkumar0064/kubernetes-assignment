@@ -22,6 +22,7 @@ pipeline {
             }
         }
         stage('Deploy to kubernetes') {
+		agent { label 'kubernetes' }
             steps {
                 sh 'kubectl apply -f newpod.yml'
             }

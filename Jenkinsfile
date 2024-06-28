@@ -7,7 +7,7 @@ pipeline {
     stages{
         stage('git-checkout') {
             steps {
-                git branch: 'master', url:'https://github.com/Nithishkumar0064/new-javafile.git'
+                git branch: 'master', url:'https://github.com/Nithishkumar0064/kubernetes-assignment.git'
             }
         }
         stage('Build docker image'){

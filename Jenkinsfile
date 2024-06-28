@@ -21,12 +21,12 @@ pipeline {
 		        sh 'docker push ${registryCredentials_USR}/tomcat4:${BUILD_ID}'
             }
         }
-        stage('Deploy ') {
-            steps {
-                sh 'docker run -itd --name cont-${BUILD_ID} -p 8000:8080 ${registryCredentials_USR}/tomcat4:${BUILD_ID}'
-            }
+        //stage('Deploy ') {
+            //steps {
+                //sh 'docker run -itd --name cont-${BUILD_ID} -p 8000:8080 ${registryCredentials_USR}/tomcat4:${BUILD_ID}'
+            //}
             
-        }
+       // }
         
    }
 }

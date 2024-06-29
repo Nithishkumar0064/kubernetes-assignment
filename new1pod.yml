@@ -7,6 +7,6 @@ metadata:
 spec:
   containers:
   - name: tomcat-container
-    image: nithishnithi/tomcat
+    image: nithishnithi/tomcat4
     ports:
     - containerPort: 8080

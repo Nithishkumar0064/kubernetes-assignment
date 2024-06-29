@@ -24,7 +24,7 @@ pipeline {
         stage('Deploy to kubernetes') {
 		agent { label 'kubernetes' }
             steps {
-                sh 'microk8s kubectl apply -f newpod.yml'
+                sh 'microk8s kubectl apply -f new1pod.yml'
             }
             
         }

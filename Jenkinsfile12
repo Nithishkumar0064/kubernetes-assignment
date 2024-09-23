@@ -14,10 +14,12 @@ pipeline {
 
         stage ('SonarQube Analysis'){
             steps {
-                    sonar-scanner \
-                      -Dsonar.projectKey=my_project \
-                      -Dsonar.sources=. \
-                      -Dsonar.java.binaries=. \
+                    withSonarQubeEnv('sonar-scanner') {
+                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=my-project \
+                    -Dsonar.java.binaries=. \
+                    -Dsonar.projectKey=my-project '''
+    
+                }
                       
             }
         }

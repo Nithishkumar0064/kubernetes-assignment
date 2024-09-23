@@ -1,101 +1,78 @@
 pipeline {
-    agent any
-
+    agent {label 'docker'}
     environment {
-        // Configure environment variables
-        GIT_REPO = 'https://github.com/your-repo/project.git'
-        DOCKER_IMAGE = 'your-docker-image'
-        SONARQUBE_SERVER = 'sonar-server'
-        SONARQUBE_TOKEN = credentials('sonar-scanner')
-        KUBECONFIG = credentials('kubeconfig')
+        repoName="threetier-app"
+        dockerCred = credentials('dockerCred')
+        dockerImage="$dockerCred_USR/$repoName"
+        SCANNER_HOME= tool 'sonar-scanner'
     }
-
     stages {
-        stage('Checkout') {
+        stage ('SCM Checkout') {
             steps {
-                // Checkout the code from Git repository
-                git branch: 'main', url: "${GIT_REPO}"
+                git branch: 'main', url: 'https://github.com/asifkhazi/TWSThreeTierAppChallenge.git'
             }
         }
 
-        stage('SonarQube Analysis') {
+        stage ('SonarQube Analysis'){
             steps {
-                script {
-                    // Run SonarQube code analysis
-                    withSonarQubeEnv("${SONARQUBE_SERVER}") {
-                        sh '''
-                        sonar-scanner \
-                          -Dsonar.projectKey=my_project \
-                          -Dsonar.sources=. \
-                          -Dsonar.host.url=$SONAR_HOST_URL \
-                          -Dsonar.login=$SONARQUBE_TOKEN
-                        '''
+                dir('Application-Code/frontend') {
+                    withSonarQubeEnv('sonar-server') {
+                        sh '''$SCANNER_HOME/bin/sonar-scanner \
+                        -Dsonar.projectName=three-tier-frontend \
+                        -Dsonar.projectKey=three-tier-frontend '''
+                    }
+                }
+                dir('Application-Code/backend') {
+                    withSonarQubeEnv('sonar-server') {
+                        sh '''$SCANNER_HOME/bin/sonar-scanner \
+                        -Dsonar.projectName=three-tier-backend \
+                        -Dsonar.projectKey=three-tier-backend '''
                     }
                 }
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Quality Check') {
             steps {
-                // Build the Docker image
                 script {
-                    sh '''
-                    docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} .
-                    '''
+                    waitForQualityGate abortPipeline: false, credentialsId: 'sonarToken' 
                 }
             }
         }
 
-        stage('Trivy Scan') {
+        stage ('Docker Build') {
             steps {
-                // Run Trivy vulnerability scan
-                script {
-                    sh '''
-                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-                      aquasec/trivy image ${DOCKER_IMAGE}:${BUILD_NUMBER}
-                    '''
+                dir('Application-Code/frontend') { 
+                        sh 'docker build -t $dockerImage:threetier-frontend .'
+                }
+                dir('Application-Code/backend') { 
+                        sh 'docker build -t $dockerImage:threetier-backend .'
                 }
             }
         }
 
-        stage('Push Docker Image') {
+        stage("TRIVY Image Scan") {
             steps {
-                // Push the Docker image to a registry
-                script {
-                    sh '''
-                    docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} your-docker-repo/${DOCKER_IMAGE}:${BUILD_NUMBER}
-                    docker push your-docker-repo/${DOCKER_IMAGE}:${BUILD_NUMBER}
-                    '''
-                }
+                sh 'trivy image -f json -o results-${BUILD_NUMBER}.json $dockerImage:threetier-frontend'
+                sh 'trivy image -f json -o results-${BUILD_NUMBER}.json $dockerImage:threetier-backend' 
             }
         }
 
-        stage('Deploy to Kubernetes') {
+        stage ('Docker Push') {
             steps {
-                // Deploy the Docker image to Kubernetes
-                script {
-                    sh '''
-                    kubectl --kubeconfig=${KUBECONFIG} set image deployment/my-app my-app=your-docker-repo/${DOCKER_IMAGE}:${BUILD_NUMBER}
-                    '''
-                }
+                sh '''
+                    echo "$dockerCred_PSW" | docker login --username $dockerCred_USR --password-stdin
+                    docker push $dockerImage:threetier-frontend
+                    docker push $dockerImage:threetier-backend
+                    docker image prune -a
+                '''
             }
         }
-
-    }
-
-    post {
-        always {
-            // Clean up workspace and Docker images
-            cleanWs()
-            sh 'docker rmi ${DOCKER_IMAGE}:${BUILD_NUMBER} || true'
-        }
-
-        success {
-            echo "Pipeline completed successfully."
-        }
-
-        failure {
-            echo "Pipeline failed."
+        stage('Deploy to kubernetes') {
+            steps {
+                sh ' kubectl apply -f newpod.yml'
+            }
+            
         }
     }
 }

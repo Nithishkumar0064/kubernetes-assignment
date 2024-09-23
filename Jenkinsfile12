@@ -1,7 +1,6 @@
 pipeline {
     agent {label 'docker'}
     environment {
-        repoName="threetier-app"
         dockerCred = credentials('dockerCred')
         dockerImage="$dockerCred_USR/$repoName"
         SCANNER_HOME= tool 'sonar-scanner'
@@ -9,26 +8,19 @@ pipeline {
     stages {
         stage ('SCM Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/asifkhazi/TWSThreeTierAppChallenge.git'
+                git branch: 'main', url: 'https://github.com/Nithishkumar0064/kubernetes-assignment.git'
             }
         }
 
         stage ('SonarQube Analysis'){
             steps {
-                dir('Application-Code/frontend') {
                     withSonarQubeEnv('sonar-server') {
                         sh '''$SCANNER_HOME/bin/sonar-scanner \
-                        -Dsonar.projectName=three-tier-frontend \
-                        -Dsonar.projectKey=three-tier-frontend '''
+                        -Dsonar.projectName=my-project \
+                        -Dsonar.projectKey=my-project '''
                     }
-                }
-                dir('Application-Code/backend') {
-                    withSonarQubeEnv('sonar-server') {
-                        sh '''$SCANNER_HOME/bin/sonar-scanner \
-                        -Dsonar.projectName=three-tier-backend \
-                        -Dsonar.projectKey=three-tier-backend '''
-                    }
-                }
+                
+                
             }
         }
 
@@ -43,18 +35,18 @@ pipeline {
         stage ('Docker Build') {
             steps {
                 dir('Application-Code/frontend') { 
-                        sh 'docker build -t $dockerImage:threetier-frontend .'
+                        sh 'docker build -t $dockerImage:my-project .'
                 }
                 dir('Application-Code/backend') { 
-                        sh 'docker build -t $dockerImage:threetier-backend .'
+                        sh 'docker build -t $dockerImage:my-project .'
                 }
             }
         }
 
         stage("TRIVY Image Scan") {
             steps {
-                sh 'trivy image -f json -o results-${BUILD_NUMBER}.json $dockerImage:threetier-frontend'
-                sh 'trivy image -f json -o results-${BUILD_NUMBER}.json $dockerImage:threetier-backend' 
+                sh 'trivy image -f json -o results-${BUILD_NUMBER}.json $dockerImage:my-project'
+                 
             }
         }
 
@@ -62,8 +54,7 @@ pipeline {
             steps {
                 sh '''
                     echo "$dockerCred_PSW" | docker login --username $dockerCred_USR --password-stdin
-                    docker push $dockerImage:threetier-frontend
-                    docker push $dockerImage:threetier-backend
+                    docker push $dockerImage:my-project
                     docker image prune -a
                 '''
             }

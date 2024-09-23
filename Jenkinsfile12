@@ -6,7 +6,7 @@ pipeline {
         GIT_REPO = 'https://github.com/your-repo/project.git'
         DOCKER_IMAGE = 'your-docker-image'
         SONARQUBE_SERVER = 'SonarQube'
-        SONARQUBE_TOKEN = credentials('sonarqube-token')
+        SONARQUBE_TOKEN = credentials('sonar-scanner')
         KUBECONFIG = credentials('kubeconfig')
     }
 

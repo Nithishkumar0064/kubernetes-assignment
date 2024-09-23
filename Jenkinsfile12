@@ -1,0 +1,101 @@
+pipeline {
+    agent any
+
+    environment {
+        // Configure environment variables
+        GIT_REPO = 'https://github.com/your-repo/project.git'
+        DOCKER_IMAGE = 'your-docker-image'
+        SONARQUBE_SERVER = 'SonarQube'
+        SONARQUBE_TOKEN = credentials('sonarqube-token')
+        KUBECONFIG = credentials('kubeconfig')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Checkout the code from Git repository
+                git branch: 'main', url: "${GIT_REPO}"
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    // Run SonarQube code analysis
+                    withSonarQubeEnv("${SONARQUBE_SERVER}") {
+                        sh '''
+                        sonar-scanner \
+                          -Dsonar.projectKey=my_project \
+                          -Dsonar.sources=. \
+                          -Dsonar.host.url=$SONAR_HOST_URL \
+                          -Dsonar.login=$SONARQUBE_TOKEN
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                // Build the Docker image
+                script {
+                    sh '''
+                    docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} .
+                    '''
+                }
+            }
+        }
+
+        stage('Trivy Scan') {
+            steps {
+                // Run Trivy vulnerability scan
+                script {
+                    sh '''
+                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                      aquasec/trivy image ${DOCKER_IMAGE}:${BUILD_NUMBER}
+                    '''
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                // Push the Docker image to a registry
+                script {
+                    sh '''
+                    docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} your-docker-repo/${DOCKER_IMAGE}:${BUILD_NUMBER}
+                    docker push your-docker-repo/${DOCKER_IMAGE}:${BUILD_NUMBER}
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                // Deploy the Docker image to Kubernetes
+                script {
+                    sh '''
+                    kubectl --kubeconfig=${KUBECONFIG} set image deployment/my-app my-app=your-docker-repo/${DOCKER_IMAGE}:${BUILD_NUMBER}
+                    '''
+                }
+            }
+        }
+
+    }
+
+    post {
+        always {
+            // Clean up workspace and Docker images
+            cleanWs()
+            sh 'docker rmi ${DOCKER_IMAGE}:${BUILD_NUMBER} || true'
+        }
+
+        success {
+            echo "Pipeline completed successfully."
+        }
+
+        failure {
+            echo "Pipeline failed."
+        }
+    }
+}

@@ -5,7 +5,7 @@ pipeline {
         // Configure environment variables
         GIT_REPO = 'https://github.com/your-repo/project.git'
         DOCKER_IMAGE = 'your-docker-image'
-        SONARQUBE_SERVER = 'SonarQube'
+        SONARQUBE_SERVER = 'sonar-server'
         SONARQUBE_TOKEN = credentials('sonar-scanner')
         KUBECONFIG = credentials('kubeconfig')
     }

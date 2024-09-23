@@ -19,10 +19,6 @@ pipeline {
                       -Dsonar.sources=. \
                       -Dsonar.java.binaries=. \
                       
-
-                    }
-                
-                
             }
         }
 
